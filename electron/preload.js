@@ -1,3 +1,5 @@
-import { contextBridge } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
 
-contextBridge.exposeInMainWorld("electronAPI", {});
+contextBridge.exposeInMainWorld("electronAPI", {
+  selectPDF: () => ipcRenderer.invoke("select-pdf"),
+});
