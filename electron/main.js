@@ -1,6 +1,8 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { PDFParse } from "pdf-parse";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,6 +46,33 @@ ipcMain.handle("select-pdf", async () => {
     name: path.basename(filePath),
     path: filePath,
   };
+});
+
+ipcMain.handle("extract-pdf-text", async (_, filePath) => {
+  try {
+    const dataBuffer = fs.readFileSync(filePath);
+
+    const parser = new PDFParse({
+      data: dataBuffer,
+    });
+
+    const result = await parser.getText();
+
+    await parser.destroy();
+
+    return {
+      success: true,
+      text: result.text,
+      pages: result.total,
+    };
+  } catch (error) {
+    console.error("PDF extraction error:", error);
+
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
 });
 
 app.whenReady().then(createWindow);

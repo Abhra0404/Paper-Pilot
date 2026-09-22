@@ -1,32 +1,78 @@
 import { useRef, useState } from "react";
+import { PDFParse } from "pdf-parse";
+import { chunkText } from "./services/chunker";
+import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 import "./index.css";
+
+PDFParse.setWorker(pdfWorkerUrl);
 
 function App() {
   const [paper, setPaper] = useState(null);
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const fileInputRef = useRef(null);
 
-  const handleUpload = async () => {
-    if (window.electronAPI?.selectPDF) {
-      const result = await window.electronAPI.selectPDF();
+const handleUpload = async () => {
+  setError("");
 
-      if (result) {
-        setPaper(result);
-      }
+  if (!window.electronAPI?.selectPDF) {
+    fileInputRef.current?.click();
+    return;
+  }
 
-      return;
+  const result = await window.electronAPI.selectPDF();
+
+  if (!result) return;
+
+  setPaper(result);
+  setLoading(true);
+
+  try {
+    const extracted = await window.electronAPI.extractPDFText(
+      result.path
+    );
+
+    if (!extracted.success) {
+      throw new Error(extracted.error);
     }
 
-    fileInputRef.current?.click();
-  };
+    setText(extracted.text);
 
-  const handleFileSelected = (event) => {
+    const chunks = chunkText(extracted.text);
+
+    console.log("Total chunks:", chunks.length);
+    console.log("First chunk:", chunks[0]);
+
+  } catch (err) {
+    console.error(err);
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleFileSelected = async (event) => {
     const file = event.target.files?.[0];
 
-    if (file) {
-      setPaper({
-        name: file.name,
-        path: file.name,
+    if (!file) return;
+
+    setPaper({ name: file.name, path: file.name });
+    setLoading(true);
+
+    try {
+      const parser = new PDFParse({
+        data: await file.arrayBuffer(),
       });
+      const result = await parser.getText();
+
+      await parser.destroy();
+      setText(result.text);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -75,13 +121,25 @@ function App() {
             <div className="paper-content">
               <h2>{paper.name}</h2>
 
-              <div className="paper-placeholder">
-                <p>PDF uploaded successfully.</p>
+              {loading && (
+                <div className="paper-placeholder">
+                  <p>Extracting text...</p>
+                </div>
+              )}
 
-                <button>
-                  Ask AI about this paper
-                </button>
-              </div>
+              {error && (
+                <div className="paper-placeholder">
+                  <p>Extraction failed:</p>
+                  <p>{error}</p>
+                </div>
+              )}
+
+              {!loading && !error && text && (
+                <div className="text-viewer">
+                  <h3>Extracted Text</h3>
+                  <pre>{text}</pre>
+                </div>
+              )}
             </div>
           </section>
         )}

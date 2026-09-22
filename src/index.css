@@ -130,3 +130,26 @@ button:hover {
   align-items: center;
   justify-content: center;
 }
+
+.text-viewer {
+  height: 75%;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+
+  padding: 25px;
+  overflow-y: auto;
+}
+
+.text-viewer h3 {
+  margin-top: 0;
+}
+
+.text-viewer pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  color: #374151;
+}
