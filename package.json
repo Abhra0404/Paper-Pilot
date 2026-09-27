@@ -11,6 +11,7 @@
     "electron": "electron electron/main.js"
   },
   "dependencies": {
+    "axios": "^1.20.0",
     "concurrently": "^10.0.5",
     "electron": "^44.4.3",
     "pdf-parse": "^2.4.5",

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { PDFParse } from "pdf-parse";
 import { chunkText } from "./services/chunker";
+import { indexPaper } from "./services/api";
 import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 import "./index.css";
 
@@ -43,6 +44,9 @@ const handleUpload = async () => {
 
     console.log("Total chunks:", chunks.length);
     console.log("First chunk:", chunks[0]);
+
+    const indexed = await indexPaper(chunks);
+    console.log("Indexing result:", indexed);
 
   } catch (err) {
     console.error(err);
