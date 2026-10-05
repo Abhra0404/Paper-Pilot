@@ -1,9 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from llm import generate_answer
 
 from embeddings import create_embeddings
 from vector_store import (
+    collection_exists,
     create_collection,
     insert_chunks,
     search,
@@ -17,6 +19,7 @@ app.add_middleware(
         "http://localhost:5174",
         "http://127.0.0.1:5174",
         "file://",
+        "null",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -41,33 +44,64 @@ def root():
 
 @app.post("/index")
 def index_paper(request: IndexRequest):
+    chunks = [chunk.strip() for chunk in request.chunks if chunk.strip()]
 
-    embeddings = create_embeddings(request.chunks)
+    if not chunks:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one non-empty chunk is required",
+        )
+
+    embeddings = create_embeddings(chunks)
 
     create_collection(
         vector_size=len(embeddings[0])
     )
 
     insert_chunks(
-        request.chunks,
+        chunks,
         embeddings
     )
 
     return {
         "success": True,
-        "chunks_indexed": len(request.chunks),
+        "chunks_indexed": len(chunks),
     }
 
 
 @app.post("/query")
 def query_paper(request: QueryRequest):
+    question = request.question.strip()
+
+    if not question:
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
+
+    if not collection_exists():
+        raise HTTPException(
+            status_code=409,
+            detail="Index a paper before asking a question",
+        )
 
     embedding = create_embeddings(
-        [request.question]
+        [question]
     )[0]
 
-    results = search(embedding)
+    results = search(
+        embedding,
+        limit=5
+    )
+
+    context = "\n\n".join(
+        result["text"]
+        for result in results
+    )
+
+    answer = generate_answer(
+        question,
+        context
+    )
 
     return {
-        "results": results
+        "answer": answer,
+        "sources": results,
     }

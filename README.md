@@ -17,12 +17,11 @@ Users can upload a research paper in PDF format, extract and process its content
 * Split extracted text into manageable chunks
 * Desktop application built with Electron.js
 * React-based user interface
+* Semantic search with Sentence Transformers and Qdrant
+* Context-grounded question answering with Groq or Gemini
 
 ### Planned
 
-* Semantic search using embeddings
-* Vector storage with Qdrant
-* AI-powered question answering
 * Context-aware research paper summaries
 * Page and section citations
 * Research paper library
@@ -133,6 +132,19 @@ paperpilot/
 ---
 
 ## Usage
+
+### AI service configuration
+
+Create `ai-service/.env` from [`ai-service/.env.example`](ai-service/.env.example)
+and add the key for the provider you want to use:
+
+```env
+LLM_PROVIDER=groq
+GROQ_API_KEY=your-groq-api-key
+```
+
+Use Gemini instead by setting `LLM_PROVIDER=gemini` and
+`GEMINI_API_KEY=your-gemini-api-key`. The `.env` file is ignored by Git.
 
 1. Launch PaperPilot.
 2. Click **Upload PDF**.

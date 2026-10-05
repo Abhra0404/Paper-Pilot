@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { PDFParse } from "pdf-parse";
 import { chunkText } from "./services/chunker";
-import { indexPaper } from "./services/api";
+import { indexPaper, queryPaper } from "./services/api";
 import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 import "./index.css";
 
@@ -12,55 +12,60 @@ function App() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [sources, setSources] = useState([]);
+  const [asking, setAsking] = useState(false);
   const fileInputRef = useRef(null);
 
-const handleUpload = async () => {
-  setError("");
+  const indexExtractedText = async (extractedText) => {
+    const chunks = chunkText(extractedText);
 
-  if (!window.electronAPI?.selectPDF) {
-    fileInputRef.current?.click();
-    return;
-  }
-
-  const result = await window.electronAPI.selectPDF();
-
-  if (!result) return;
-
-  setPaper(result);
-  setLoading(true);
-
-  try {
-    const extracted = await window.electronAPI.extractPDFText(
-      result.path
-    );
-
-    if (!extracted.success) {
-      throw new Error(extracted.error);
+    if (chunks.length === 0) {
+      throw new Error("The PDF does not contain extractable text.");
     }
 
-    setText(extracted.text);
+    await indexPaper(chunks);
+  };
 
-    const chunks = chunkText(extracted.text);
+  const handleUpload = async () => {
+    setError("");
 
-    console.log("Total chunks:", chunks.length);
-    console.log("First chunk:", chunks[0]);
+    if (!window.electronAPI?.selectPDF) {
+      fileInputRef.current?.click();
+      return;
+    }
 
-    const indexed = await indexPaper(chunks);
-    console.log("Indexing result:", indexed);
+    const result = await window.electronAPI.selectPDF();
 
-  } catch (err) {
-    console.error(err);
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+    if (!result) return;
+
+    setPaper(result);
+    setLoading(true);
+
+    try {
+      const extracted = await window.electronAPI.extractPDFText(result.path);
+
+      if (!extracted.success) {
+        throw new Error(extracted.error);
+      }
+
+      setText(extracted.text);
+      await indexExtractedText(extracted.text);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFileSelected = async (event) => {
     const file = event.target.files?.[0];
 
     if (!file) return;
 
+    setError("");
     setPaper({ name: file.name, path: file.name });
     setLoading(true);
 
@@ -72,11 +77,33 @@ const handleUpload = async () => {
 
       await parser.destroy();
       setText(result.text);
+      await indexExtractedText(result.text);
     } catch (err) {
       console.error(err);
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleQuestion = async (event) => {
+    event.preventDefault();
+    const trimmedQuestion = question.trim();
+
+    if (!trimmedQuestion) return;
+
+    setError("");
+    setAsking(true);
+
+    try {
+      const result = await queryPaper(trimmedQuestion);
+      setAnswer(result.answer);
+      setSources(result.sources ?? []);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.detail ?? err.message);
+    } finally {
+      setAsking(false);
     }
   };
 
@@ -143,6 +170,43 @@ const handleUpload = async () => {
                   <h3>Extracted Text</h3>
                   <pre>{text}</pre>
                 </div>
+              )}
+
+              {!loading && !error && text && (
+                <section className="chat-section">
+                  <h3>Ask about this paper</h3>
+                  <form className="question-box" onSubmit={handleQuestion}>
+                    <input
+                      value={question}
+                      onChange={(event) => setQuestion(event.target.value)}
+                      placeholder="What is the main contribution?"
+                      disabled={asking}
+                    />
+                    <button type="submit" disabled={asking || !question.trim()}>
+                      {asking ? "Thinking..." : "Ask"}
+                    </button>
+                  </form>
+
+                  {answer && (
+                    <div className="search-results">
+                      <h3>Answer</h3>
+                      <p>{answer}</p>
+                      {sources.length > 0 && (
+                        <>
+                          <h4>Sources</h4>
+                          {sources.map((source, index) => (
+                            <div className="result" key={`${source.score}-${index}`}>
+                              <div className="score">
+                                Relevance: {source.score.toFixed(3)}
+                              </div>
+                              <p>{source.text}</p>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </section>
               )}
             </div>
           </section>

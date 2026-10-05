@@ -21,15 +21,15 @@ client = create_client()
 COLLECTION_NAME = "paperpilot"
 
 
-def create_collection(vector_size):
-    collections = client.get_collections().collections
-
-    exists = any(
+def collection_exists():
+    return any(
         collection.name == COLLECTION_NAME
-        for collection in collections
+        for collection in client.get_collections().collections
     )
 
-    if not exists:
+
+def create_collection(vector_size):
+    if not collection_exists():
         client.create_collection(
             collection_name=COLLECTION_NAME,
             vectors_config=VectorParams(
