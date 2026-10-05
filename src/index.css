@@ -206,3 +206,165 @@ button:hover {
   color: #6b7280;
   margin-bottom: 8px;
 }
+.paper-header {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.paper-header h2 {
+  margin-bottom: 5px;
+}
+
+.paper-header p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.chat-container {
+  height: calc(100vh - 180px);
+
+  display: flex;
+  flex-direction: column;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px 10px;
+}
+
+.welcome {
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+}
+
+.welcome-icon {
+  font-size: 48px;
+}
+
+.welcome h2 {
+  margin-bottom: 5px;
+}
+
+.welcome p {
+  color: #6b7280;
+}
+
+.suggestions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.suggestions button {
+  background: white;
+  color: #374151;
+
+  border: 1px solid #d1d5db;
+
+  padding: 10px 14px;
+}
+
+.suggestions button:hover {
+  background: #f3f4f6;
+}
+
+.message {
+  max-width: 850px;
+  margin: 0 auto 25px;
+}
+
+.message-label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+
+.message-content {
+  padding: 15px;
+
+  border-radius: 10px;
+
+  line-height: 1.6;
+}
+
+.message.user .message-content {
+  background: #111827;
+  color: white;
+}
+
+.message.assistant .message-content {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.sources {
+  margin-top: 15px;
+}
+
+.sources-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.source {
+  background: white;
+  border: 1px solid #e5e7eb;
+
+  padding: 12px;
+  margin-bottom: 8px;
+
+  border-radius: 8px;
+}
+
+.source span {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.source p {
+  font-size: 13px;
+  line-height: 1.5;
+
+  color: #4b5563;
+}
+
+.source small {
+  color: #9ca3af;
+}
+
+.chat-input-container {
+  display: flex;
+  gap: 10px;
+
+  padding-top: 15px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.chat-input-container input {
+  flex: 1;
+
+  padding: 14px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+
+  font-size: 15px;
+}
+
+.chat-input-container input:focus {
+  outline: none;
+  border-color: #111827;
+}
+
+.chat-input-container button {
+  padding: 0 24px;
+}

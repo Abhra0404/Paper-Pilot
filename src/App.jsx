@@ -17,6 +17,8 @@ function App() {
   const [sources, setSources] = useState([]);
   const [asking, setAsking] = useState(false);
   const fileInputRef = useRef(null);
+  const [messages, setMessages] = useState([]);
+  const [queryLoading, setQueryLoading] = useState(false);
 
   const indexExtractedText = async (extractedText) => {
     const chunks = chunkText(extractedText);
@@ -59,6 +61,51 @@ function App() {
       setLoading(false);
     }
   };
+  const handleAsk = async () => {
+  if (!question.trim() || queryLoading) {
+    return;
+  }
+
+  const userQuestion = question.trim();
+
+  setQuestion("");
+
+  setMessages((prev) => [
+    ...prev,
+    {
+      role: "user",
+      content: userQuestion,
+    },
+  ]);
+
+  setQueryLoading(true);
+
+  try {
+    const data = await queryPaper(userQuestion);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: data.answer,
+        sources: data.sources || [],
+      },
+    ]);
+  } catch (error) {
+    console.error("Query failed:", error);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content:
+          "Sorry, I couldn't process that question.",
+      },
+    ]);
+  } finally {
+    setQueryLoading(false);
+  }
+};
 
   const handleFileSelected = async (event) => {
     const file = event.target.files?.[0];
@@ -150,65 +197,173 @@ function App() {
             </aside>
 
             <div className="paper-content">
-              <h2>{paper.name}</h2>
 
-              {loading && (
-                <div className="paper-placeholder">
-                  <p>Extracting text...</p>
+  <div className="paper-header">
+    <div>
+      <h2>{paper.name}</h2>
+      <p>AI-powered research assistant</p>
+    </div>
+  </div>
+
+  <div className="chat-container">
+
+    <div className="messages">
+
+      {messages.length === 0 && (
+        <div className="welcome">
+          <div className="welcome-icon">
+            📚
+          </div>
+
+          <h2>Ask about this paper</h2>
+
+          <p>
+            Ask questions about the research,
+            methodology, results, or conclusions.
+          </p>
+
+          <div className="suggestions">
+
+            <button
+              onClick={() =>
+                setQuestion(
+                  "What is the main contribution of this paper?"
+                )
+              }
+            >
+              What is the main contribution?
+            </button>
+
+            <button
+              onClick={() =>
+                setQuestion(
+                  "What methodology does the paper use?"
+                )
+              }
+            >
+              Explain the methodology
+            </button>
+
+            <button
+              onClick={() =>
+                setQuestion(
+                  "What are the main results?"
+                )
+              }
+            >
+              What are the main results?
+            </button>
+
+          </div>
+        </div>
+      )}
+
+      {messages.map((message, index) => (
+
+        <div
+          key={index}
+          className={`message ${message.role}`}
+        >
+
+          <div className="message-label">
+            {message.role === "user"
+              ? "You"
+              : "PaperPilot"}
+          </div>
+
+          <div className="message-content">
+            {message.content}
+          </div>
+
+          {message.role === "assistant" &&
+            message.sources?.length > 0 && (
+
+              <div className="sources">
+
+                <div className="sources-title">
+                  Sources
                 </div>
-              )}
 
-              {error && (
-                <div className="paper-placeholder">
-                  <p>Extraction failed:</p>
-                  <p>{error}</p>
-                </div>
-              )}
+                {message.sources.map(
+                  (source, sourceIndex) => (
 
-              {!loading && !error && text && (
-                <div className="text-viewer">
-                  <h3>Extracted Text</h3>
-                  <pre>{text}</pre>
-                </div>
-              )}
+                    <div
+                      key={sourceIndex}
+                      className="source"
+                    >
+                      <span>
+                        Source {sourceIndex + 1}
+                      </span>
 
-              {!loading && !error && text && (
-                <section className="chat-section">
-                  <h3>Ask about this paper</h3>
-                  <form className="question-box" onSubmit={handleQuestion}>
-                    <input
-                      value={question}
-                      onChange={(event) => setQuestion(event.target.value)}
-                      placeholder="What is the main contribution?"
-                      disabled={asking}
-                    />
-                    <button type="submit" disabled={asking || !question.trim()}>
-                      {asking ? "Thinking..." : "Ask"}
-                    </button>
-                  </form>
+                      <p>
+                        {source.text}
+                      </p>
 
-                  {answer && (
-                    <div className="search-results">
-                      <h3>Answer</h3>
-                      <p>{answer}</p>
-                      {sources.length > 0 && (
-                        <>
-                          <h4>Sources</h4>
-                          {sources.map((source, index) => (
-                            <div className="result" key={`${source.score}-${index}`}>
-                              <div className="score">
-                                Relevance: {source.score.toFixed(3)}
-                              </div>
-                              <p>{source.text}</p>
-                            </div>
-                          ))}
-                        </>
-                      )}
+                      <small>
+                        Relevance:{" "}
+                        {source.score.toFixed(3)}
+                      </small>
                     </div>
-                  )}
-                </section>
-              )}
-            </div>
+
+                  )
+                )}
+
+              </div>
+
+            )}
+
+        </div>
+
+      ))}
+
+      {queryLoading && (
+
+        <div className="message assistant">
+
+          <div className="message-label">
+            PaperPilot
+          </div>
+
+          <div className="message-content">
+            Thinking...
+          </div>
+
+        </div>
+
+      )}
+
+    </div>
+
+    <div className="chat-input-container">
+
+      <input
+        type="text"
+        placeholder="Ask anything about this paper..."
+        value={question}
+        onChange={(e) =>
+          setQuestion(e.target.value)
+        }
+        onKeyDown={(e) => {
+
+          if (e.key === "Enter") {
+            handleAsk();
+          }
+
+        }}
+      />
+
+      <button
+        onClick={handleAsk}
+        disabled={queryLoading}
+      >
+        {queryLoading ? "..." : "Send"}
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
           </section>
         )}
       </main>
