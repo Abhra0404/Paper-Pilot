@@ -73,3 +73,16 @@ def search(query_embedding, limit=5):
         }
         for result in results.points
     ]
+
+def reset_collection():
+    collections = client.get_collections().collections
+
+    exists = any(
+        collection.name == COLLECTION_NAME
+        for collection in collections
+    )
+
+    if exists:
+        client.delete_collection(
+            collection_name=COLLECTION_NAME
+        )

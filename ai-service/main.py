@@ -5,10 +5,10 @@ from llm import generate_answer
 
 from embeddings import create_embeddings
 from vector_store import (
-    collection_exists,
     create_collection,
     insert_chunks,
     search,
+    reset_collection,
 )
 
 app = FastAPI()
@@ -104,4 +104,25 @@ def query_paper(request: QueryRequest):
     return {
         "answer": answer,
         "sources": results,
+    }
+
+@app.post("/index")
+def index_paper(request: IndexRequest):
+
+    reset_collection()
+
+    embeddings = create_embeddings(request.chunks)
+
+    create_collection(
+        vector_size=len(embeddings[0])
+    )
+
+    insert_chunks(
+        request.chunks,
+        embeddings
+    )
+
+    return {
+        "success": True,
+        "chunks_indexed": len(request.chunks),
     }
