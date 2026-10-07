@@ -40,15 +40,21 @@ def create_collection(vector_size):
 
 
 def insert_chunks(chunks, embeddings):
+
     points = []
 
     for chunk, embedding in zip(chunks, embeddings):
+
         points.append(
             PointStruct(
                 id=str(uuid.uuid4()),
+
                 vector=embedding,
+
                 payload={
-                    "text": chunk,
+                    "text": chunk.text,
+                    "page_number": chunk.pageNumber,
+                    "chunk_index": chunk.chunkIndex,
                 },
             )
         )
@@ -70,6 +76,8 @@ def search(query_embedding, limit=5):
         {
             "text": result.payload["text"],
             "score": result.score,
+            "page_number": result.payload["page_number"],
+            "chunk_index": result.payload["chunk_index"],
         }
         for result in results.points
     ]

@@ -146,6 +146,16 @@ GROQ_API_KEY=your-groq-api-key
 Use Gemini instead by setting `LLM_PROVIDER=gemini` and
 `GEMINI_API_KEY=your-gemini-api-key`. The `.env` file is ignored by Git.
 
+Start the app from the project root with:
+
+```bash
+npm run dev
+```
+
+This starts the Vite renderer, the FastAPI service on `http://localhost:8000`,
+and Electron together. If you start Electron separately, start the AI service
+first with `npm run dev:ai-service`.
+
 1. Launch PaperPilot.
 2. Click **Upload PDF**.
 3. Select an academic research paper.

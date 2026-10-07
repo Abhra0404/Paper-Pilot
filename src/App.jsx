@@ -1,370 +1,135 @@
-import { useRef, useState } from "react";
-import { PDFParse } from "pdf-parse";
-import { chunkText } from "./services/chunker";
-import { indexPaper, queryPaper } from "./services/api";
-import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
-import "./index.css";
+import { useState } from "react";
 
-PDFParse.setWorker(pdfWorkerUrl);
+import Sidebar from "./components/Sidebar";
+import EmptyState from "./components/EmptyState";
+import PaperHeader from "./components/PaperHeader";
+
+import { chunkPages } from "./services/chunker";
+import { indexPaper } from "./services/api";
 
 function App() {
   const [paper, setPaper] = useState(null);
-  const [text, setText] = useState("");
+  const [pages, setPages] = useState(0);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [sources, setSources] = useState([]);
-  const [asking, setAsking] = useState(false);
-  const fileInputRef = useRef(null);
-  const [messages, setMessages] = useState([]);
-  const [queryLoading, setQueryLoading] = useState(false);
-
-  const indexExtractedText = async (extractedText) => {
-    const chunks = chunkText(extractedText);
-
-    if (chunks.length === 0) {
-      throw new Error("The PDF does not contain extractable text.");
-    }
-
-    await indexPaper(chunks);
-  };
 
   const handleUpload = async () => {
-    setError("");
-
-    if (!window.electronAPI?.selectPDF) {
-      fileInputRef.current?.click();
-      return;
-    }
-
-    const result = await window.electronAPI.selectPDF();
-
-    if (!result) return;
-
-    setPaper(result);
-    setLoading(true);
-
     try {
-      const extracted = await window.electronAPI.extractPDFText(result.path);
+      setError("");
+      setLoading(true);
 
-      if (!extracted.success) {
-        throw new Error(extracted.error);
+      const result =
+        await window.electronAPI.selectPDF();
+
+      if (!result) {
+        setLoading(false);
+        return;
       }
 
-      setText(extracted.text);
-      await indexExtractedText(extracted.text);
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-  const handleAsk = async () => {
-  if (!question.trim() || queryLoading) {
-    return;
-  }
+      const pdfData =
+        await window.electronAPI.extractPDFText(
+          result
+        );
 
-  const userQuestion = question.trim();
+      if (!pdfData.success) {
+        throw new Error(pdfData.error);
+      }
 
-  setQuestion("");
+      const chunks = chunkPages(
+        pdfData.pageTexts
+      );
 
-  setMessages((prev) => [
-    ...prev,
-    {
-      role: "user",
-      content: userQuestion,
-    },
-  ]);
+      console.log(
+        "Created chunks:",
+        chunks
+      );
 
-  setQueryLoading(true);
+      await indexPaper(chunks);
 
-  try {
-    const data = await queryPaper(userQuestion);
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "assistant",
-        content: data.answer,
-        sources: data.sources || [],
-      },
-    ]);
-  } catch (error) {
-    console.error("Query failed:", error);
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "assistant",
-        content:
-          "Sorry, I couldn't process that question.",
-      },
-    ]);
-  } finally {
-    setQueryLoading(false);
-  }
-};
-
-  const handleFileSelected = async (event) => {
-    const file = event.target.files?.[0];
-
-    if (!file) return;
-
-    setError("");
-    setPaper({ name: file.name, path: file.name });
-    setLoading(true);
-
-    try {
-      const parser = new PDFParse({
-        data: await file.arrayBuffer(),
+      setPaper({
+        name: result.split("/").pop(),
+        path: result,
       });
-      const result = await parser.getText();
 
-      await parser.destroy();
-      setText(result.text);
-      await indexExtractedText(result.text);
+      setPages(pdfData.pages);
+
     } catch (err) {
       console.error(err);
-      setError(err.message);
+
+      setError(
+        err.message ||
+        "Failed to process the paper."
+      );
+
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleQuestion = async (event) => {
-    event.preventDefault();
-    const trimmedQuestion = question.trim();
-
-    if (!trimmedQuestion) return;
-
-    setError("");
-    setAsking(true);
-
-    try {
-      const result = await queryPaper(trimmedQuestion);
-      setAnswer(result.answer);
-      setSources(result.sources ?? []);
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.detail ?? err.message);
-    } finally {
-      setAsking(false);
     }
   };
 
   return (
     <div className="app">
-      <header className="header">
-        <h1>PaperPilot</h1>
-        <span>AI Research Assistant</span>
-      </header>
-
-      <main className="main">
-        {!paper ? (
-          <section className="upload-container">
-            <div className="upload-icon">📄</div>
-
-            <h2>Understand Research Papers with AI</h2>
-
-            <p>
-              Upload a research paper and explore it using AI.
-            </p>
-
-            <button onClick={handleUpload}>
-              Upload PDF
-            </button>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/pdf,.pdf"
-              onChange={handleFileSelected}
-              hidden
-            />
-
-            <small>PDF files only</small>
-          </section>
-        ) : (
-          <section className="paper-container">
-            <aside className="sidebar">
-              <h2>My Papers</h2>
-
-              <div className="paper-item">
-                📄 {paper.name}
-              </div>
-            </aside>
-
-            <div className="paper-content">
-
-  <div className="paper-header">
-    <div>
-      <h2>{paper.name}</h2>
-      <p>AI-powered research assistant</p>
-    </div>
-  </div>
-
-  <div className="chat-container">
-
-    <div className="messages">
-
-      {messages.length === 0 && (
-        <div className="welcome">
-          <div className="welcome-icon">
-            📚
-          </div>
-
-          <h2>Ask about this paper</h2>
-
-          <p>
-            Ask questions about the research,
-            methodology, results, or conclusions.
-          </p>
-
-          <div className="suggestions">
-
-            <button
-              onClick={() =>
-                setQuestion(
-                  "What is the main contribution of this paper?"
-                )
-              }
-            >
-              What is the main contribution?
-            </button>
-
-            <button
-              onClick={() =>
-                setQuestion(
-                  "What methodology does the paper use?"
-                )
-              }
-            >
-              Explain the methodology
-            </button>
-
-            <button
-              onClick={() =>
-                setQuestion(
-                  "What are the main results?"
-                )
-              }
-            >
-              What are the main results?
-            </button>
-
-          </div>
-        </div>
-      )}
-
-      {messages.map((message, index) => (
-
-        <div
-          key={index}
-          className={`message ${message.role}`}
-        >
-
-          <div className="message-label">
-            {message.role === "user"
-              ? "You"
-              : "PaperPilot"}
-          </div>
-
-          <div className="message-content">
-            {message.content}
-          </div>
-
-          {message.role === "assistant" &&
-            message.sources?.length > 0 && (
-
-              <div className="sources">
-
-                <div className="sources-title">
-                  Sources
-                </div>
-
-                {message.sources.map(
-                  (source, sourceIndex) => (
-
-                    <div
-                      key={sourceIndex}
-                      className="source"
-                    >
-                      <span>
-                        Source {sourceIndex + 1}
-                      </span>
-
-                      <p>
-                        {source.text}
-                      </p>
-
-                      <small>
-                        Relevance:{" "}
-                        {source.score.toFixed(3)}
-                      </small>
-                    </div>
-
-                  )
-                )}
-
-              </div>
-
-            )}
-
-        </div>
-
-      ))}
-
-      {queryLoading && (
-
-        <div className="message assistant">
-
-          <div className="message-label">
-            PaperPilot
-          </div>
-
-          <div className="message-content">
-            Thinking...
-          </div>
-
-        </div>
-
-      )}
-
-    </div>
-
-    <div className="chat-input-container">
-
-      <input
-        type="text"
-        placeholder="Ask anything about this paper..."
-        value={question}
-        onChange={(e) =>
-          setQuestion(e.target.value)
-        }
-        onKeyDown={(e) => {
-
-          if (e.key === "Enter") {
-            handleAsk();
-          }
-
-        }}
+      <Sidebar
+        paper={paper}
+        onUpload={handleUpload}
       />
 
-      <button
-        onClick={handleAsk}
-        disabled={queryLoading}
-      >
-        {queryLoading ? "..." : "Send"}
-      </button>
+      <main className="main">
+        {paper ? (
+          <>
+            <PaperHeader
+              paper={paper}
+              pages={pages}
+            />
 
-    </div>
+            <div className="workspace">
+              <div className="paper-placeholder">
+                <div className="placeholder-icon">
+                  PDF
+                </div>
 
-  </div>
+                <h3>
+                  {paper.name}
+                </h3>
 
-</div>
-          </section>
+                <p>
+                  Your paper has been indexed
+                  successfully.
+                </p>
+
+                <span>
+                  PDF viewer coming next
+                </span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <EmptyState
+            onUpload={handleUpload}
+          />
+        )}
+
+        {loading && (
+          <div className="processing">
+            <div className="spinner" />
+
+            <div>
+              <strong>
+                Processing paper
+              </strong>
+
+              <span>
+                Extracting text and building
+                semantic index...
+              </span>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="error-toast">
+            {error}
+          </div>
         )}
       </main>
     </div>

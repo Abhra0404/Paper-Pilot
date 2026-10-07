@@ -5,10 +5,10 @@ from llm import generate_answer
 
 from embeddings import create_embeddings
 from vector_store import (
+    collection_exists,
     create_collection,
     insert_chunks,
     search,
-    reset_collection,
 )
 
 app = FastAPI()
@@ -27,8 +27,14 @@ app.add_middleware(
 )
 
 
+class Chunk(BaseModel):
+    text: str
+    pageNumber: int
+    chunkIndex: int
+
+
 class IndexRequest(BaseModel):
-    chunks: list[str]
+    chunks: list[Chunk]
 
 
 class QueryRequest(BaseModel):
@@ -44,15 +50,14 @@ def root():
 
 @app.post("/index")
 def index_paper(request: IndexRequest):
-    chunks = [chunk.strip() for chunk in request.chunks if chunk.strip()]
-
+    chunks = [chunk for chunk in request.chunks if chunk.text.strip()]
     if not chunks:
         raise HTTPException(
             status_code=400,
             detail="At least one non-empty chunk is required",
         )
 
-    embeddings = create_embeddings(chunks)
+    embeddings = create_embeddings([chunk.text for chunk in chunks])
 
     create_collection(
         vector_size=len(embeddings[0])
@@ -104,25 +109,4 @@ def query_paper(request: QueryRequest):
     return {
         "answer": answer,
         "sources": results,
-    }
-
-@app.post("/index")
-def index_paper(request: IndexRequest):
-
-    reset_collection()
-
-    embeddings = create_embeddings(request.chunks)
-
-    create_collection(
-        vector_size=len(embeddings[0])
-    )
-
-    insert_chunks(
-        request.chunks,
-        embeddings
-    )
-
-    return {
-        "success": True,
-        "chunks_indexed": len(request.chunks),
     }

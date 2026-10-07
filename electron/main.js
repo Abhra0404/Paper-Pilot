@@ -7,6 +7,33 @@ import { PDFParse } from "pdf-parse";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+function normalizePdfPath(filePath) {
+  if (typeof filePath === "string") {
+    return filePath;
+  }
+
+  if (filePath && typeof filePath === "object") {
+    if (typeof filePath.path === "string") {
+      return filePath.path;
+    }
+
+    if (typeof filePath.filePath === "string") {
+      return filePath.filePath;
+    }
+
+    if (
+      Array.isArray(filePath.filePaths) &&
+      typeof filePath.filePaths[0] === "string"
+    ) {
+      return filePath.filePaths[0];
+    }
+  }
+
+  throw new TypeError(
+    "A PDF file path is required, but the renderer provided an invalid value."
+  );
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1400,
@@ -40,38 +67,42 @@ ipcMain.handle("select-pdf", async () => {
     return null;
   }
 
-  const filePath = result.filePaths[0];
-
-  return {
-    name: path.basename(filePath),
-    path: filePath,
-  };
+  return result.filePaths[0] ?? null;
 });
 
-ipcMain.handle("extract-pdf-text", async (_, filePath) => {
+ipcMain.handle("extract-pdf-text", async (_, filePathInput) => {
+  let parser;
+
   try {
+    const filePath = normalizePdfPath(filePathInput);
     const dataBuffer = fs.readFileSync(filePath);
 
-    const parser = new PDFParse({
+    parser = new PDFParse({
       data: dataBuffer,
     });
 
     const result = await parser.getText();
 
-    await parser.destroy();
-
     return {
       success: true,
       text: result.text,
       pages: result.total,
+
+      // Important: preserve page boundaries
+      pageTexts: result.pages.map((page) => ({
+        pageNumber: page.num,
+        text: page.text,
+      })),
     };
   } catch (error) {
     console.error("PDF extraction error:", error);
 
     return {
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : "Failed to extract PDF text.",
     };
+  } finally {
+    await parser?.destroy();
   }
 });
 

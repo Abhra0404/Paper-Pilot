@@ -1,18 +1,37 @@
-export function chunkText(text, chunkSize = 1000, overlap = 200) {
+export function chunkPages(
+  pages,
+  chunkSize = 1000,
+  overlap = 200
+) {
   const chunks = [];
 
-  let start = 0;
+  for (const page of pages) {
+    const text = page.text.trim();
 
-  while (start < text.length) {
-    const end = start + chunkSize;
+    if (!text) continue;
 
-    const chunk = text.slice(start, end).trim();
+    let start = 0;
+    let chunkIndex = 0;
 
-    if (chunk.length > 0) {
-      chunks.push(chunk);
+    while (start < text.length) {
+      const end = start + chunkSize;
+
+      const chunkText = text
+        .slice(start, end)
+        .trim();
+
+      if (chunkText.length > 0) {
+        chunks.push({
+          text: chunkText,
+          pageNumber: page.pageNumber,
+          chunkIndex,
+        });
+
+        chunkIndex++;
+      }
+
+      start += chunkSize - overlap;
     }
-
-    start += chunkSize - overlap;
   }
 
   return chunks;
