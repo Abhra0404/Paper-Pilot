@@ -5,4 +5,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   extractPDFText: (filePath) =>
     ipcRenderer.invoke("extract-pdf-text", filePath),
+
+  readPDF: (filePath) =>
+    ipcRenderer.invoke("read-pdf", filePath),
 });

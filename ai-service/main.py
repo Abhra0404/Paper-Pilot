@@ -8,6 +8,7 @@ from vector_store import (
     collection_exists,
     create_collection,
     insert_chunks,
+    reset_collection,
     search,
 )
 
@@ -48,6 +49,11 @@ def root():
     }
 
 
+@app.head("/", include_in_schema=False)
+def root_head():
+    return None
+
+
 @app.post("/index")
 def index_paper(request: IndexRequest):
     chunks = [chunk for chunk in request.chunks if chunk.text.strip()]
@@ -59,6 +65,7 @@ def index_paper(request: IndexRequest):
 
     embeddings = create_embeddings([chunk.text for chunk in chunks])
 
+    reset_collection()
     create_collection(
         vector_size=len(embeddings[0])
     )

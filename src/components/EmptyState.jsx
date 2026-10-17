@@ -31,23 +31,23 @@ export default function EmptyState({
 
       <div className="suggestions">
         <div className="suggestion">
-          <strong>Ask questions</strong>
-          <span>
-            "What is the main contribution?"
-          </span>
-        </div>
-
-        <div className="suggestion">
           <strong>Understand concepts</strong>
           <span>
-            "Explain the proposed architecture"
+            Explain the proposed architecture
           </span>
         </div>
 
         <div className="suggestion">
-          <strong>Find evidence</strong>
+          <strong>Summarize findings</strong>
           <span>
-            "What experiments support the claim?"
+            Summarize the key results
+          </span>
+        </div>
+
+        <div className="suggestion">
+          <strong>Find supporting evidence</strong>
+          <span>
+            Find experiments that support the claim
           </span>
         </div>
       </div>

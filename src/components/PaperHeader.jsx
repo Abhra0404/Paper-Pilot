@@ -1,6 +1,7 @@
 export default function PaperHeader({
   paper,
   pages,
+  status = "Indexed",
 }) {
   return (
     <header className="paper-header">
@@ -20,9 +21,9 @@ export default function PaperHeader({
         </div>
       </div>
 
-      <div className="status">
+      <div className={`status status-${status.toLowerCase()}`}>
         <span className="status-dot" />
-        Indexed
+        {status}
       </div>
     </header>
   );

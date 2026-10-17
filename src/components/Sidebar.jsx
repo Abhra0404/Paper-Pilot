@@ -1,6 +1,7 @@
 export default function Sidebar({
   paper,
   onUpload,
+  disabled = false,
 }) {
   return (
     <aside className="sidebar">
@@ -17,6 +18,7 @@ export default function Sidebar({
         <button
           className="new-paper-btn"
           onClick={onUpload}
+          disabled={disabled}
         >
           <span>+</span>
           Add paper
@@ -52,17 +54,7 @@ export default function Sidebar({
         )}
       </div>
 
-      <div className="sidebar-bottom">
-        <button className="sidebar-action">
-          <span>⌘</span>
-          Keyboard shortcuts
-        </button>
-
-        <button className="sidebar-action">
-          <span>⚙</span>
-          Settings
-        </button>
-      </div>
+      <div className="sidebar-bottom" />
     </aside>
   );
 }

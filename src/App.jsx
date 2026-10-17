@@ -1,134 +1,107 @@
 import { useState } from "react";
 
-import Sidebar from "./components/Sidebar";
+import Chat from "./components/Chat";
 import EmptyState from "./components/EmptyState";
 import PaperHeader from "./components/PaperHeader";
-
+import PdfViewer from "./components/PdfViewer";
+import Sidebar from "./components/Sidebar";
+import UploadStatus from "./components/UploadStatus";
 import { chunkPages } from "./services/chunker";
-import { indexPaper } from "./services/api";
+import { indexPaper, queryPaper } from "./services/api";
+
+function getSelectedFile(result) {
+  if (typeof result === "string") {
+    return {
+      filePath: result,
+      fileName: result.split(/[\\/]/).pop(),
+    };
+  }
+
+  if (result && typeof result.filePath === "string") {
+    return {
+      filePath: result.filePath,
+      fileName: result.fileName || result.filePath.split(/[\\/]/).pop(),
+      fileUrl: result.fileUrl,
+    };
+  }
+
+  throw new Error("The selected PDF did not include a valid file path.");
+}
 
 function App() {
   const [paper, setPaper] = useState(null);
   const [pages, setPages] = useState(0);
-
-  const [loading, setLoading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("idle");
   const [error, setError] = useState("");
 
   const handleUpload = async () => {
     try {
       setError("");
-      setLoading(true);
+      setUploadStatus("selecting");
 
-      const result =
-        await window.electronAPI.selectPDF();
+      if (!window.electronAPI?.selectPDF) {
+        throw new Error("The Electron file picker is unavailable.");
+      }
 
-      if (!result) {
-        setLoading(false);
+      const selection = await window.electronAPI.selectPDF();
+      if (!selection) {
+        setUploadStatus("idle");
         return;
       }
 
-      const pdfData =
-        await window.electronAPI.extractPDFText(
-          result
-        );
+      const file = getSelectedFile(selection);
+      setUploadStatus("extracting");
+      const pdfData = await window.electronAPI.extractPDFText(file.filePath);
 
       if (!pdfData.success) {
-        throw new Error(pdfData.error);
+        throw new Error(pdfData.error || "Failed to extract text from the PDF.");
       }
 
-      const chunks = chunkPages(
-        pdfData.pageTexts
-      );
+      const chunks = chunkPages(pdfData.pageTexts || []);
+      if (chunks.length === 0) {
+        throw new Error("This PDF does not contain extractable text.");
+      }
 
-      console.log(
-        "Created chunks:",
-        chunks
-      );
-
+      setUploadStatus("indexing");
       await indexPaper(chunks);
 
       setPaper({
-        name: result.split("/").pop(),
-        path: result,
+        name: file.fileName,
+        path: file.filePath,
+        fileUrl: file.fileUrl,
       });
-
-      setPages(pdfData.pages);
-
-    } catch (err) {
-      console.error(err);
-
-      setError(
-        err.message ||
-        "Failed to process the paper."
-      );
-
-    } finally {
-      setLoading(false);
+      setPages(pdfData.pages || pdfData.pageTexts?.length || 0);
+      setUploadStatus("completed");
+    } catch (uploadError) {
+      console.error("Paper upload failed:", uploadError);
+      setUploadStatus("idle");
+      setError(uploadError.message || "Failed to process the paper.");
     }
   };
 
   return (
     <div className="app">
-      <Sidebar
-        paper={paper}
-        onUpload={handleUpload}
-      />
-
+      <Sidebar paper={paper} onUpload={handleUpload} disabled={uploadStatus !== "idle" && uploadStatus !== "completed"} />
       <main className="main">
         {paper ? (
           <>
-            <PaperHeader
-              paper={paper}
-              pages={pages}
-            />
-
+            <PaperHeader paper={paper} pages={pages} />
             <div className="workspace">
-              <div className="paper-placeholder">
-                <div className="placeholder-icon">
-                  PDF
-                </div>
-
-                <h3>
-                  {paper.name}
-                </h3>
-
-                <p>
-                  Your paper has been indexed
-                  successfully.
-                </p>
-
-                <span>
-                  PDF viewer coming next
-                </span>
+              <div className="paper-area">
+                <PdfViewer key={paper.path} paper={paper} />
               </div>
+              <Chat indexed onQuery={queryPaper} />
             </div>
           </>
         ) : (
-          <EmptyState
-            onUpload={handleUpload}
-          />
+          <EmptyState onUpload={handleUpload} />
         )}
 
-        {loading && (
-          <div className="processing">
-            <div className="spinner" />
-
-            <div>
-              <strong>
-                Processing paper
-              </strong>
-
-              <span>
-                Extracting text and building
-                semantic index...
-              </span>
-            </div>
-          </div>
-        )}
-
+        <UploadStatus status={uploadStatus} />
         {error && (
-          <div className="error-toast">
-            {error}
+          <div className="error-toast" role="alert">
+            <span>{error}</span>
+            <button type="button" onClick={() => setError("")} aria-label="Dismiss error">Dismiss</button>
           </div>
         )}
       </main>

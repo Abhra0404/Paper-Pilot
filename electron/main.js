@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { PDFParse } from "pdf-parse";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -40,6 +40,8 @@ function createWindow() {
     height: 900,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
@@ -67,7 +69,15 @@ ipcMain.handle("select-pdf", async () => {
     return null;
   }
 
-  return result.filePaths[0] ?? null;
+  const filePath = result.filePaths[0];
+
+  return filePath
+    ? {
+        filePath,
+        fileName: path.basename(filePath),
+      fileUrl: pathToFileURL(filePath).toString(),
+    }
+    : null;
 });
 
 ipcMain.handle("extract-pdf-text", async (_, filePathInput) => {
@@ -103,6 +113,19 @@ ipcMain.handle("extract-pdf-text", async (_, filePathInput) => {
     };
   } finally {
     await parser?.destroy();
+  }
+});
+
+ipcMain.handle("read-pdf", async (_, filePathInput) => {
+  try {
+    const filePath = normalizePdfPath(filePathInput);
+    return await fs.promises.readFile(filePath);
+  } catch (error) {
+    console.error("PDF preview error:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to load the PDF preview.",
+      { cause: error }
+    );
   }
 });
 
