@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from pydantic import Field
 from llm import generate_answer
 
 from embeddings import create_embeddings
@@ -35,10 +36,12 @@ class Chunk(BaseModel):
 
 
 class IndexRequest(BaseModel):
+    paper_id: str = Field(min_length=1, max_length=100)
     chunks: list[Chunk]
 
 
 class QueryRequest(BaseModel):
+    paper_id: str = Field(min_length=1, max_length=100)
     question: str
 
 
@@ -65,12 +68,14 @@ def index_paper(request: IndexRequest):
 
     embeddings = create_embeddings([chunk.text for chunk in chunks])
 
-    reset_collection()
+    reset_collection(request.paper_id)
     create_collection(
-        vector_size=len(embeddings[0])
+        request.paper_id,
+        vector_size=len(embeddings[0]),
     )
 
     insert_chunks(
+        request.paper_id,
         chunks,
         embeddings
     )
@@ -88,7 +93,7 @@ def query_paper(request: QueryRequest):
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty")
 
-    if not collection_exists():
+    if not collection_exists(request.paper_id):
         raise HTTPException(
             status_code=409,
             detail="Index a paper before asking a question",
@@ -99,6 +104,7 @@ def query_paper(request: QueryRequest):
     )[0]
 
     results = search(
+        request.paper_id,
         embedding,
         limit=5
     )

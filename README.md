@@ -13,6 +13,8 @@ Users can upload a research paper in PDF format, extract and process its content
 ### Current
 
 * Upload research papers in PDF format
+* Persistent local library for up to 10 papers
+* Switch between saved papers and ask questions about the selected paper
 * Extract text from PDF documents
 * Split extracted text into manageable chunks
 * Desktop application built with Electron.js
@@ -24,7 +26,7 @@ Users can upload a research paper in PDF format, extract and process its content
 
 * Context-aware research paper summaries
 * Page and section citations
-* Research paper library
+* Larger searchable research paper library
 * Multi-paper search
 * Paper comparison
 * Key contribution and methodology extraction
@@ -157,13 +159,19 @@ and Electron together. If you start Electron separately, start the AI service
 first with `npm run dev:ai-service`.
 
 1. Launch PaperPilot.
-2. Click **Upload PDF**.
-3. Select an academic research paper.
-4. PaperPilot extracts the paper's text.
-5. The extracted content is processed into chunks.
-6. The chunks are converted into embeddings.
-7. Relevant chunks are retrieved when the user asks a question.
-8. The AI generates an answer using the retrieved paper content.
+2. Click **Add paper** and select an academic research paper.
+3. PaperPilot extracts the paper's text.
+4. The extracted content is processed into chunks.
+5. The chunks are converted into embeddings for that paper.
+6. The paper is saved in the local library.
+7. Select any saved paper from the sidebar to view it and continue learning.
+8. Relevant chunks from only the selected paper are retrieved when you ask a question.
+9. The AI generates an answer using the retrieved paper content.
+
+The library supports up to 10 papers. Paper metadata and PDF copies are stored
+locally in Electron's application data directory; papers are not uploaded to a
+remote service. Removing or moving the original PDF after adding it does not
+affect the saved library copy.
 
 ---
 

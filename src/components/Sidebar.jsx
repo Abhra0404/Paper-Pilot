@@ -1,6 +1,11 @@
 export default function Sidebar({
-  paper,
+  papers = [],
+  selectedPaper,
+  onSelect,
+  onRemove,
   onUpload,
+  onHome,
+  isHome,
   disabled = false,
 }) {
   return (
@@ -23,26 +28,49 @@ export default function Sidebar({
           <span>+</span>
           Add paper
         </button>
+        <button className={`home-nav ${isHome ? "active" : ""}`} type="button" onClick={onHome}>
+          <span>⌂</span>
+          Home
+        </button>
       </div>
 
       <div className="sidebar-section">
         <div className="section-label">
-          LIBRARY
+          <span>LIBRARY</span>
+          <span>{papers.length}/10</span>
         </div>
 
-        {paper ? (
-          <div className="paper-item active">
-            <div className="paper-icon">PDF</div>
-
-            <div className="paper-info">
-              <div className="paper-name">
-                {paper.name}
+        {papers.length > 0 ? (
+          <div className="paper-list">
+            {papers.map((paper) => (
+              <div
+                className={`paper-item ${selectedPaper?.id === paper.id ? "active" : ""}`}
+                key={paper.id}
+                onClick={() => onSelect(paper)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") onSelect(paper);
+                }}
+              >
+                <div className="paper-icon">PDF</div>
+                <div className="paper-info">
+                  <div className="paper-name">{paper.name}</div>
+                  <div className="paper-meta">{paper.pages || 0} pages</div>
+                </div>
+                <button
+                  className="remove-paper"
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onRemove(paper);
+                  }}
+                  aria-label={`Remove ${paper.name}`}
+                >
+                  ×
+                </button>
               </div>
-
-              <div className="paper-meta">
-                Current paper
-              </div>
-            </div>
+            ))}
           </div>
         ) : (
           <div className="empty-library">

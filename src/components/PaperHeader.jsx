@@ -2,12 +2,16 @@ export default function PaperHeader({
   paper,
   pages,
   status = "Indexed",
+  onBack,
 }) {
   return (
     <header className="paper-header">
+      <button className="back-button" type="button" onClick={onBack}>
+        ←
+      </button>
       <div>
         <div className="breadcrumb">
-          Library
+          <button type="button" onClick={onBack}>Library</button>
           <span>/</span>
           Current paper
         </div>
@@ -21,9 +25,11 @@ export default function PaperHeader({
         </div>
       </div>
 
-      <div className={`status status-${status.toLowerCase()}`}>
-        <span className="status-dot" />
-        {status}
+      <div className="paper-header-actions">
+        <div className={`status status-${status.toLowerCase()}`}>
+          <span className="status-dot" />
+          {status}
+        </div>
       </div>
     </header>
   );

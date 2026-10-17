@@ -11,9 +11,12 @@ function getApiError(error, fallback) {
   );
 }
 
-export async function indexPaper(chunks) {
+export async function indexPaper(paperId, chunks) {
   try {
-    const response = await axios.post(`${API_URL}/index`, { chunks });
+    const response = await axios.post(`${API_URL}/index`, {
+      paper_id: paperId,
+      chunks,
+    });
     return response.data;
   } catch (error) {
     throw new Error(getApiError(error, "Unable to index the paper."), {
@@ -22,9 +25,12 @@ export async function indexPaper(chunks) {
   }
 }
 
-export async function queryPaper(question) {
+export async function queryPaper(paperId, question) {
   try {
-    const response = await axios.post(`${API_URL}/query`, { question });
+    const response = await axios.post(`${API_URL}/query`, {
+      paper_id: paperId,
+      question,
+    });
     return response.data;
   } catch (error) {
     throw new Error(getApiError(error, "Unable to get an answer."), {

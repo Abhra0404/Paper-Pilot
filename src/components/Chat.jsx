@@ -2,22 +2,28 @@ import { useEffect, useRef, useState } from "react";
 
 import Message from "./Message";
 
-export default function Chat({ indexed, onQuery }) {
+export default function Chat({
+  indexed,
+  onQuery,
+  initialMessages,
+  onMessagesChange,
+}) {
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Upload and index a paper, then ask me about its concepts, methods, or findings.",
-    },
-  ]);
+  const [messages, setMessages] = useState(initialMessages || [{
+    id: "welcome",
+    role: "assistant",
+    content: "Upload and index a paper, then ask me about its concepts, methods, or findings.",
+  }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isSubmitting]);
+
+  useEffect(() => {
+    onMessagesChange?.(messages);
+  }, [messages, onMessagesChange]);
 
   const submitQuestion = async (value, retryId) => {
     const trimmedQuestion = value.trim();

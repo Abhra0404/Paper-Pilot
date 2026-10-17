@@ -8,4 +8,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   readPDF: (filePath) =>
     ipcRenderer.invoke("read-pdf", filePath),
+
+  loadLibrary: () =>
+    ipcRenderer.invoke("load-library"),
+
+  storePDF: (filePath, paperId, fileName) =>
+    ipcRenderer.invoke("store-pdf", filePath, paperId, fileName),
+
+  deleteStoredPDF: (filePath) =>
+    ipcRenderer.invoke("delete-stored-pdf", filePath),
+
+  saveLibrary: (library) =>
+    ipcRenderer.invoke("save-library", library),
 });

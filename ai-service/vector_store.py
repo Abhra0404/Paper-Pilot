@@ -1,8 +1,20 @@
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointStruct,
+    VectorParams,
+)
 import os
 import uuid
+import hashlib
 
+
+def collection_name(paper_id):
+    digest = hashlib.sha256(paper_id.encode("utf-8")).hexdigest()[:24]
+    return f"paperpilot_{digest}"
 
 
 def create_client():
@@ -18,20 +30,20 @@ def create_client():
 
 client = create_client()
 
-COLLECTION_NAME = "paperpilot"
 
-
-def collection_exists():
+def collection_exists(paper_id):
+    name = collection_name(paper_id)
     return any(
-        collection.name == COLLECTION_NAME
+        collection.name == name
         for collection in client.get_collections().collections
     )
 
 
-def create_collection(vector_size):
-    if not collection_exists():
+def create_collection(paper_id, vector_size):
+    name = collection_name(paper_id)
+    if not collection_exists(paper_id):
         client.create_collection(
-            collection_name=COLLECTION_NAME,
+            collection_name=name,
             vectors_config=VectorParams(
                 size=vector_size,
                 distance=Distance.COSINE,
@@ -39,7 +51,7 @@ def create_collection(vector_size):
         )
 
 
-def insert_chunks(chunks, embeddings):
+def insert_chunks(paper_id, chunks, embeddings):
 
     points = []
 
@@ -52,6 +64,7 @@ def insert_chunks(chunks, embeddings):
                 vector=embedding,
 
                 payload={
+                    "paper_id": paper_id,
                     "text": chunk.text,
                     "page_number": chunk.pageNumber,
                     "chunk_index": chunk.chunkIndex,
@@ -60,16 +73,24 @@ def insert_chunks(chunks, embeddings):
         )
 
     client.upsert(
-        collection_name=COLLECTION_NAME,
+        collection_name=collection_name(paper_id),
         points=points,
     )
 
 
-def search(query_embedding, limit=5):
+def search(paper_id, query_embedding, limit=5):
     results = client.query_points(
-        collection_name=COLLECTION_NAME,
+        collection_name=collection_name(paper_id),
         query=query_embedding,
         limit=limit,
+        query_filter=Filter(
+            must=[
+                FieldCondition(
+                    key="paper_id",
+                    match=MatchValue(value=paper_id),
+                )
+            ]
+        ),
     )
 
     return [
@@ -82,15 +103,15 @@ def search(query_embedding, limit=5):
         for result in results.points
     ]
 
-def reset_collection():
+def reset_collection(paper_id):
     collections = client.get_collections().collections
 
     exists = any(
-        collection.name == COLLECTION_NAME
+        collection.name == collection_name(paper_id)
         for collection in collections
     )
 
     if exists:
         client.delete_collection(
-            collection_name=COLLECTION_NAME
+            collection_name=collection_name(paper_id)
         )

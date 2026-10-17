@@ -6,6 +6,25 @@ import { PDFParse } from "pdf-parse";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const LIBRARY_FILE = "paperpilot-library.json";
+const PAPERS_DIRECTORY = "paperpilot-papers";
+
+function getLibraryPath() {
+  return path.join(app.getPath("userData"), LIBRARY_FILE);
+}
+
+function getPapersDirectory() {
+  return path.join(app.getPath("userData"), PAPERS_DIRECTORY);
+}
+
+function isPaperRecord(paper) {
+  return (
+    paper &&
+    typeof paper.id === "string" &&
+    typeof paper.name === "string" &&
+    typeof paper.path === "string"
+  );
+}
 
 function normalizePdfPath(filePath) {
   if (typeof filePath === "string") {
@@ -35,9 +54,11 @@ function normalizePdfPath(filePath) {
 }
 
 function createWindow() {
+  const iconPath = path.join(__dirname, "../assets/icons/icon.png");
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -78,6 +99,70 @@ ipcMain.handle("select-pdf", async () => {
       fileUrl: pathToFileURL(filePath).toString(),
     }
     : null;
+});
+
+ipcMain.handle("load-library", async () => {
+  try {
+    const contents = await fs.promises.readFile(getLibraryPath(), "utf8");
+    const library = JSON.parse(contents);
+    return Array.isArray(library) ? library.filter(isPaperRecord).slice(0, 10) : [];
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    console.error("Library loading error:", error);
+    throw new Error("Unable to load the paper library.", { cause: error });
+  }
+});
+
+ipcMain.handle("store-pdf", async (_, filePathInput, paperId, fileName) => {
+  try {
+    const sourcePath = normalizePdfPath(filePathInput);
+    if (typeof paperId !== "string" || !paperId) {
+      throw new TypeError("A paper ID is required.");
+    }
+
+    const safeName = path.basename(fileName || path.basename(sourcePath));
+    const storedPath = path.join(getPapersDirectory(), `${paperId}-${safeName}`);
+    await fs.promises.mkdir(getPapersDirectory(), { recursive: true });
+    await fs.promises.copyFile(sourcePath, storedPath);
+    return storedPath;
+  } catch (error) {
+    console.error("PDF storage error:", error);
+    throw new Error("Unable to store the selected paper.", { cause: error });
+  }
+});
+
+ipcMain.handle("delete-stored-pdf", async (_, filePathInput) => {
+  try {
+    const filePath = normalizePdfPath(filePathInput);
+    const papersDirectory = path.resolve(getPapersDirectory());
+    const resolvedPath = path.resolve(filePath);
+    if (!resolvedPath.startsWith(`${papersDirectory}${path.sep}`)) {
+      throw new Error("Only library-managed PDF files can be removed.");
+    }
+    await fs.promises.rm(resolvedPath, { force: true });
+  } catch (error) {
+    console.error("Stored PDF removal error:", error);
+    throw new Error("Unable to remove the stored paper.", { cause: error });
+  }
+});
+
+ipcMain.handle("save-library", async (_, library) => {
+  if (!Array.isArray(library) || library.length > 10) {
+    throw new RangeError("The library can contain at most 10 papers.");
+  }
+
+  try {
+    await fs.promises.mkdir(path.dirname(getLibraryPath()), { recursive: true });
+    await fs.promises.writeFile(
+      getLibraryPath(),
+      JSON.stringify(library, null, 2),
+      "utf8"
+    );
+    return true;
+  } catch (error) {
+    console.error("Library saving error:", error);
+    throw new Error("Unable to save the paper library.", { cause: error });
+  }
 });
 
 ipcMain.handle("extract-pdf-text", async (_, filePathInput) => {

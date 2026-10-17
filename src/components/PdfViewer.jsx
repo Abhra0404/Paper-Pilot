@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 export default function PdfViewer({ paper }) {
   const [pdfUrl, setPdfUrl] = useState("");
   const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     let objectUrl = "";
@@ -21,6 +22,7 @@ export default function PdfViewer({ paper }) {
       .catch((error) => {
         if (!cancelled) {
           console.error("Unable to load PDF preview:", error);
+          setErrorMessage("The saved PDF could not be opened. It may have been moved or deleted.");
           setHasError(true);
         }
       });
@@ -36,7 +38,7 @@ export default function PdfViewer({ paper }) {
       <div className="pdf-viewer-fallback">
         <div className="placeholder-icon">PDF</div>
         <h3>{paper?.name || "Paper preview"}</h3>
-        <p>Preview unavailable. You can still ask questions about the indexed paper.</p>
+        <p>{errorMessage || "Preview unavailable. You can still ask questions about the indexed paper."}</p>
       </div>
     );
   }
