@@ -1,78 +1,87 @@
-# PaperPilot — AI Research Paper Assistant
+# PaperPilot
 
-PaperPilot is an AI-powered desktop application that helps users understand research papers more efficiently. It combines PDF reading with Retrieval-Augmented Generation (RAG), allowing users to ask questions about research papers and receive context-aware answers supported by relevant source excerpts.
+**Your research papers. One workspace. Smarter understanding.**
 
-Built with Electron, React, FastAPI, Qdrant, Sentence Transformers, and Groq, PaperPilot brings research reading and AI-assisted understanding into one workspace.
+PaperPilot is an AI-powered desktop application that helps users read, explore, and understand research papers. It combines PDF reading with Retrieval-Augmented Generation (RAG), enabling users to ask questions about a paper and receive context-aware answers based on relevant passages from the document.
+
+Built with Electron, React, FastAPI, Qdrant, Sentence Transformers, and Groq, PaperPilot brings document reading and AI-assisted research into a single desktop workspace.
 
 ## Features
 
-- **Research Library:** Store and organize research papers in a centralized desktop library.
-- **PDF Reading:** Open and read research papers within the application.
-- **AI-Powered Q&A:** Ask questions about a paper and receive answers grounded in its content.
-- **Semantic Search:** Retrieve relevant passages using vector embeddings rather than relying only on keyword matching.
-- **Source References:** View relevant source excerpts and page information when available.
-- **Local Library:** Revisit saved papers without manually selecting them each time.
-- **Dark Desktop Interface:** A focused interface designed for reading and research.
+- **Research Library:** Keep research papers organized in a centralized workspace.
+- **Integrated PDF Reading:** Open research papers within the desktop application.
+- **AI-Powered Q&A:** Ask questions about a paper's concepts, methodology, architecture, experiments, and findings.
+- **Semantic Retrieval:** Find relevant passages using vector embeddings and similarity search.
+- **Context-Grounded Answers:** Provide retrieved paper excerpts to the language model to help ground its responses in the document.
+- **Source References:** Inspect retrieved source excerpts and page information when available.
+- **Modern Desktop Experience:** A polished dark interface designed for focused reading and research.
 
 ## Tech Stack
 
-| Component | Technology |
+| Layer | Technology |
 |---|---|
-| Desktop application | Electron.js |
+| Desktop framework | Electron.js |
 | Frontend | React, Vite |
 | Backend API | Python, FastAPI |
-| PDF processing | pdf-parse |
-| Embeddings | Sentence Transformers (`all-MiniLM-L6-v2`) |
+| PDF extraction | pdf-parse |
+| Embedding model | Sentence Transformers — `all-MiniLM-L6-v2` |
 | Vector database | Qdrant |
 | LLM inference | Groq API |
-| HTTP communication | Axios, HTTPX |
+| HTTP clients | Axios, HTTPX |
 
-## Architecture
+## How It Works
 
-PaperPilot uses a RAG pipeline to generate answers grounded in the contents of research papers.
+PaperPilot uses Retrieval-Augmented Generation (RAG) to answer questions using the contents of research papers.
 
 ```text
-Research Paper (PDF)
-        |
-        v
- PDF Text Extraction
-        |
-        v
- Text Chunking
-        |
-        v
- Sentence Transformers
-        |
-        v
- Qdrant Vector Database
-        |
-        v
- User Question
-        |
-        v
- Semantic Retrieval
-        |
-        v
- Relevant Paper Context
-        |
-        v
- Groq Inference API
-        |
-        v
- Grounded Answer + Sources
+          Research Paper (PDF)
+                   |
+                   v
+            PDF Extraction
+                   |
+                   v
+              Text Chunking
+                   |
+                   v
+          Embedding Generation
+                   |
+                   v
+           Qdrant Vector Store
+                   |
+                   v
+             User Question
+                   |
+                   v
+          Semantic Retrieval
+                   |
+                   v
+          Relevant Paper Context
+                   |
+                   v
+              Groq API
+                   |
+                   v
+         Answer + Source Excerpts
 ```
 
-The Electron application provides the desktop interface, while the FastAPI service handles embeddings, vector retrieval, and AI-generated responses.
+1. **Extract:** Text is extracted from the uploaded PDF.
+2. **Chunk:** The extracted text is divided into smaller passages.
+3. **Embed:** Sentence Transformers converts passages into vector embeddings.
+4. **Index:** Embeddings and associated metadata are stored in Qdrant.
+5. **Retrieve:** A user's question is embedded and used to find relevant passages.
+6. **Generate:** The retrieved context is sent to Groq for answer generation.
+7. **Present:** PaperPilot displays the answer and available source information.
 
-## Prerequisites
+## Getting Started
 
-Before running PaperPilot, install:
+### Prerequisites
+
+Install the following before running PaperPilot:
 
 - [Node.js](https://nodejs.org/) and npm
 - [Python](https://www.python.org/) compatible with the project's dependencies
+- [Docker](https://www.docker.com/)
 - A [Groq API key](https://console.groq.com/)
-
-## Getting Started
 
 ### 1. Clone the repository
 
@@ -87,21 +96,14 @@ cd paperpilot
 npm install
 ```
 
-### 3. Set up the AI service
-
-Navigate to the AI service directory:
+### 3. Set up the Python service
 
 ```bash
 cd ai-service
-```
-
-Create a virtual environment:
-
-```bash
 python -m venv .venv
 ```
 
-Activate it.
+Activate the virtual environment.
 
 **macOS / Linux**
 
@@ -121,9 +123,9 @@ Install the Python dependencies:
 pip install -r requirements.txt
 ```
 
-### 4. Configure the Groq API key
+### 4. Configure Groq
 
-Set the environment variable expected by the backend.
+Set the API key expected by your backend.
 
 **macOS / Linux**
 
@@ -137,45 +139,57 @@ export GROQ_API_KEY="your_groq_api_key"
 $env:GROQ_API_KEY="your_groq_api_key"
 ```
 
-Keep your API key private. Never commit it to version control.
+Never commit your actual API key to GitHub.
 
-### 5. Configure vector storage
+### 5. Start Qdrant
 
-PaperPilot uses Qdrant's embedded local storage by default, so a separate Qdrant
-server is not required. Data is stored under the application's user-data
-directory. To use a remote Qdrant server instead, set `QDRANT_URL`.
+Start a local Qdrant instance using Docker:
 
-### 6. Start the AI service
+```bash
+docker run -d \
+  --name paperpilot-qdrant \
+  -p 6333:6333 \
+  -p 6334:6334 \
+  qdrant/qdrant
+```
 
-From the `ai-service` directory, with the virtual environment activated and API key configured:
+If a Qdrant container is already running, reuse it rather than starting another container on the same ports.
+
+Qdrant dashboard: [http://localhost:6333/dashboard](http://localhost:6333/dashboard)
+
+### 6. Start the AI backend
+
+From the `ai-service` directory, with the virtual environment activated and the API key configured:
 
 ```bash
 uvicorn main:app --reload --port 8000
 ```
 
-The API will be available at:
+The backend will be available at `http://localhost:8000`.
 
-- API: `http://localhost:8000`
-- Interactive API documentation: `http://localhost:8000/docs`
+Interactive API documentation is available at `http://localhost:8000/docs`.
 
-### 7. Launch PaperPilot
+### 7. Launch the desktop application
 
-Open a separate terminal, navigate to the project root, and run:
+Open another terminal, navigate to the project root, and run:
 
 ```bash
 npm run dev
 ```
 
-This starts the Vite development server and launches the Electron desktop application using the configured development script.
+This uses the development command configured in `package.json` to start the frontend and launch Electron.
 
-## How to Use
+> **Note:** The setup commands assume the project uses the directory names and configuration shown above. Check your current `package.json` and `requirements.txt` if your setup differs.
 
-1. Launch PaperPilot and open the research library.
-2. Add a research paper in PDF format.
-3. Wait for text extraction, chunking, embedding generation, and indexing to complete.
-4. Open the indexed paper in the reading workspace.
-5. Ask questions about its methodology, architecture, experiments, findings, or technical concepts.
-6. Review the generated answers and retrieved source excerpts to understand the evidence behind them.
+## Using PaperPilot
+
+1. Launch the desktop application.
+2. Open the research library.
+3. Upload a research paper in PDF format.
+4. Wait for text extraction, embedding generation, and indexing to finish.
+5. Open the paper in the reading workspace.
+6. Ask questions about the paper.
+7. Review the answer and its retrieved source excerpts to understand the supporting evidence.
 
 ## Project Structure
 
@@ -200,12 +214,31 @@ paperpilot/
 └── vite.config.js
 ```
 
-*The exact structure may vary as the project evolves.*
+The exact structure may evolve as development continues.
+
+## Download
+
+Download the latest packaged application from [GitHub Releases](https://github.com/YOUR_USERNAME/YOUR_REPOSITORY/releases/latest).
+
+For macOS, download the `.dmg` asset attached to the release and follow the included installation instructions.
+
+**Runtime requirements:** The current architecture uses a separate Python AI service and Qdrant instance. Unless these services are bundled or hosted separately, they must be configured and running for AI functionality to work.
+
+## Limitations
+
+- Answer quality depends on PDF extraction, chunking, retrieval relevance, and the selected Groq model.
+- Scanned PDFs may require OCR if they do not contain extractable text.
+- Page citations are available only when page metadata is preserved during extraction and indexing.
+- The application requires access to the configured AI inference service.
 
 ## Future Improvements
 
-- More advanced citation navigation and PDF highlighting.
-- Improved multi-paper search and comparison.
-- Paper summaries and structured research insights.
-- Enhanced document management and indexing.
-- Production packaging for Windows, macOS, and Linux.
+- Improved PDF citation navigation and source highlighting.
+- More advanced research-paper search and comparison.
+- Automated paper summaries and structured insights.
+- More robust indexing and paper-library management.
+- Simplified installation and deployment of backend dependencies.
+
+---
+
+**PaperPilot — Read less. Understand more.**
