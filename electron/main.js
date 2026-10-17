@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -8,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const LIBRARY_FILE = "paperpilot-library.json";
 const PAPERS_DIRECTORY = "paperpilot-papers";
+let aiServiceProcess;
 
 function getLibraryPath() {
   return path.join(app.getPath("userData"), LIBRARY_FILE);
@@ -15,6 +17,73 @@ function getLibraryPath() {
 
 function getPapersDirectory() {
   return path.join(app.getPath("userData"), PAPERS_DIRECTORY);
+}
+
+function getAiServiceDirectory() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "app.asar.unpacked", "ai-service")
+    : path.join(__dirname, "../ai-service");
+}
+
+function getIconPath() {
+  return app.isPackaged
+    ? path.join(app.getAppPath(), "assets", "icons", "icon.png")
+    : path.join(__dirname, "../assets/icons/icon.png");
+}
+
+function getPythonCommand() {
+  if (process.platform === "win32") return "python";
+
+  const candidates = [
+    "/Library/Frameworks/Python.framework/Versions/Current/bin/python3",
+    "/opt/homebrew/bin/python3",
+    "/usr/local/bin/python3",
+    "/usr/bin/python3",
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate)) || "python3";
+}
+
+function startAiService() {
+  if (process.env.VITE_DEV_SERVER_URL) return;
+
+  const pythonCommand = getPythonCommand();
+  const serviceDirectory = getAiServiceDirectory();
+  const serviceLogPath = path.join(app.getPath("userData"), "ai-service.log");
+  const serviceLog = fs.createWriteStream(serviceLogPath, { flags: "a" });
+  aiServiceProcess = spawn(
+    pythonCommand,
+    ["-m", "uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8000"],
+    {
+      cwd: serviceDirectory,
+      env: {
+        ...process.env,
+        PAPERPILOT_QDRANT_PATH: path.join(app.getPath("userData"), "qdrant"),
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    },
+  );
+
+  aiServiceProcess.stdout.on("data", (data) => {
+    const message = `PaperPilot AI service: ${data.toString()}`;
+    console.log(message.trim());
+    serviceLog.write(message);
+  });
+  aiServiceProcess.stderr.on("data", (data) => {
+    const message = `PaperPilot AI service: ${data.toString()}`;
+    console.error(message.trim());
+    serviceLog.write(message);
+  });
+  aiServiceProcess.on("error", (error) => {
+    console.error("PaperPilot AI service failed to start:", error);
+    serviceLog.write(`PaperPilot AI service failed to start: ${error.stack || error}\n`);
+  });
+  aiServiceProcess.on("exit", (code, signal) => {
+    serviceLog.end();
+    if (code !== 0 && signal !== "SIGTERM") {
+      console.error("PaperPilot AI service exited unexpectedly:", { code, signal });
+    }
+  });
 }
 
 function isPaperRecord(paper) {
@@ -54,7 +123,7 @@ function normalizePdfPath(filePath) {
 }
 
 function createWindow() {
-  const iconPath = path.join(__dirname, "../assets/icons/icon.png");
+  const iconPath = getIconPath();
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -64,6 +133,28 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  win.webContents.on("did-fail-load", (_, errorCode, errorDescription, validatedURL) => {
+    console.error("PaperPilot renderer failed to load:", {
+      errorCode,
+      errorDescription,
+      validatedURL,
+    });
+  });
+
+  win.webContents.on("render-process-gone", (_, details) => {
+    console.error("PaperPilot renderer process exited:", details);
+  });
+
+  win.webContents.on("console-message", (_, level, message, line, sourceId) => {
+    if (level >= 2) {
+      console.error("PaperPilot renderer console error:", {
+        message,
+        line,
+        sourceId,
+      });
+    }
   });
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
@@ -214,10 +305,22 @@ ipcMain.handle("read-pdf", async (_, filePathInput) => {
   }
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  startAiService();
+  createWindow();
+});
 
 app.on("window-all-closed", () => {
+  if (aiServiceProcess && !aiServiceProcess.killed) {
+    aiServiceProcess.kill();
+  }
   if (process.platform !== "darwin") {
     app.quit();
+  }
+});
+
+app.on("before-quit", () => {
+  if (aiServiceProcess && !aiServiceProcess.killed) {
+    aiServiceProcess.kill();
   }
 });

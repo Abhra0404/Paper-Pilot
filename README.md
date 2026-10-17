@@ -1,224 +1,211 @@
-# PaperPilot
+# PaperPilot — AI Research Paper Assistant
 
-> **AI-powered desktop research assistant for understanding and analyzing academic papers.**
+PaperPilot is an AI-powered desktop application that helps users understand research papers more efficiently. It combines PDF reading with Retrieval-Augmented Generation (RAG), allowing users to ask questions about research papers and receive context-aware answers supported by relevant source excerpts.
 
-PaperPilot is an Electron.js desktop application that helps students and researchers read, understand, and interact with research papers using AI.
-
-Users can upload a research paper in PDF format, extract and process its content, and ask natural-language questions about the paper. PaperPilot uses a Retrieval-Augmented Generation (RAG) pipeline to retrieve relevant sections of the paper before generating an answer.
-
----
+Built with Electron, React, FastAPI, Qdrant, Sentence Transformers, and Groq, PaperPilot brings research reading and AI-assisted understanding into one workspace.
 
 ## Features
 
-### Current
-
-* Upload research papers in PDF format
-* Persistent local library for up to 10 papers
-* Switch between saved papers and ask questions about the selected paper
-* Extract text from PDF documents
-* Split extracted text into manageable chunks
-* Desktop application built with Electron.js
-* React-based user interface
-* Semantic search with Sentence Transformers and Qdrant
-* Context-grounded question answering with Groq or Gemini
-
-### Planned
-
-* Context-aware research paper summaries
-* Page and section citations
-* Larger searchable research paper library
-* Multi-paper search
-* Paper comparison
-* Key contribution and methodology extraction
-* Knowledge graph / GraphRAG support
-
----
-
-## How It Works
-
-PaperPilot follows a Retrieval-Augmented Generation architecture:
-
-```text
-                    Research Paper
-                          │
-                          ▼
-                     PDF Upload
-                          │
-                          ▼
-                    Text Extraction
-                          │
-                          ▼
-                       Chunking
-                          │
-                          ▼
-                      Embeddings
-                          │
-                          ▼
-                     Vector Store
-                          │
-                          ▼
-                    Semantic Search
-                          │
-                          ▼
-                   Relevant Context
-                          │
-                          ▼
-                         LLM
-                          │
-                          ▼
-                    AI Response
-```
-
-When a user asks a question, PaperPilot retrieves the most relevant sections of the paper and provides them as context to the language model. This helps the model generate answers grounded in the uploaded research paper.
-
----
+- **Research Library:** Store and organize research papers in a centralized desktop library.
+- **PDF Reading:** Open and read research papers within the application.
+- **AI-Powered Q&A:** Ask questions about a paper and receive answers grounded in its content.
+- **Semantic Search:** Retrieve relevant passages using vector embeddings rather than relying only on keyword matching.
+- **Source References:** View relevant source excerpts and page information when available.
+- **Local Library:** Revisit saved papers without manually selecting them each time.
+- **Dark Desktop Interface:** A focused interface designed for reading and research.
 
 ## Tech Stack
 
-### Desktop
+| Component | Technology |
+|---|---|
+| Desktop application | Electron.js |
+| Frontend | React, Vite |
+| Backend API | Python, FastAPI |
+| PDF processing | pdf-parse |
+| Embeddings | Sentence Transformers (`all-MiniLM-L6-v2`) |
+| Vector database | Qdrant |
+| LLM inference | Groq API |
+| HTTP communication | Axios, HTTPX |
 
-* Electron.js
+## Architecture
 
-### Frontend
-
-* React
-* Vite
-* JavaScript
-* CSS
-
-### AI / RAG
-
-* Large Language Model
-* Embeddings
-* Retrieval-Augmented Generation (RAG)
-* Vector search
-* Qdrant
-
-### Document Processing
-
-* PDF text extraction
-* Text chunking
-
-### Storage
-
-* SQLite / local storage for application metadata
-* Qdrant for vector embeddings
-
----
-
-## Project Structure
+PaperPilot uses a RAG pipeline to generate answers grounded in the contents of research papers.
 
 ```text
-paperpilot/
-│
-├── electron/
-│   ├── main.js
-│   └── preload.js
-│
-├── src/
-│   ├── components/
-│   ├── pages/
-│   ├── services/
-│   │   └── chunker.js
-│   ├── App.jsx
-│   ├── main.jsx
-│   └── index.css
-│
-├── public/
-│
-├── package.json
-├── vite.config.js
-└── README.md
+Research Paper (PDF)
+        |
+        v
+ PDF Text Extraction
+        |
+        v
+ Text Chunking
+        |
+        v
+ Sentence Transformers
+        |
+        v
+ Qdrant Vector Database
+        |
+        v
+ User Question
+        |
+        v
+ Semantic Retrieval
+        |
+        v
+ Relevant Paper Context
+        |
+        v
+ Groq Inference API
+        |
+        v
+ Grounded Answer + Sources
 ```
 
----
+The Electron application provides the desktop interface, while the FastAPI service handles embeddings, vector retrieval, and AI-generated responses.
 
-## Usage
+## Prerequisites
 
-### AI service configuration
+Before running PaperPilot, install:
 
-Create `ai-service/.env` from [`ai-service/.env.example`](ai-service/.env.example)
-and add the key for the provider you want to use:
+- [Node.js](https://nodejs.org/) and npm
+- [Python](https://www.python.org/) compatible with the project's dependencies
+- A [Groq API key](https://console.groq.com/)
 
-```env
-LLM_PROVIDER=groq
-GROQ_API_KEY=your-groq-api-key
+## Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone <repository-url>
+cd paperpilot
 ```
 
-Use Gemini instead by setting `LLM_PROVIDER=gemini` and
-`GEMINI_API_KEY=your-gemini-api-key`. The `.env` file is ignored by Git.
+### 2. Install frontend dependencies
 
-Start the app from the project root with:
+```bash
+npm install
+```
+
+### 3. Set up the AI service
+
+Navigate to the AI service directory:
+
+```bash
+cd ai-service
+```
+
+Create a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+Activate it.
+
+**macOS / Linux**
+
+```bash
+source .venv/bin/activate
+```
+
+**Windows PowerShell**
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Install the Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure the Groq API key
+
+Set the environment variable expected by the backend.
+
+**macOS / Linux**
+
+```bash
+export GROQ_API_KEY="your_groq_api_key"
+```
+
+**Windows PowerShell**
+
+```powershell
+$env:GROQ_API_KEY="your_groq_api_key"
+```
+
+Keep your API key private. Never commit it to version control.
+
+### 5. Configure vector storage
+
+PaperPilot uses Qdrant's embedded local storage by default, so a separate Qdrant
+server is not required. Data is stored under the application's user-data
+directory. To use a remote Qdrant server instead, set `QDRANT_URL`.
+
+### 6. Start the AI service
+
+From the `ai-service` directory, with the virtual environment activated and API key configured:
+
+```bash
+uvicorn main:app --reload --port 8000
+```
+
+The API will be available at:
+
+- API: `http://localhost:8000`
+- Interactive API documentation: `http://localhost:8000/docs`
+
+### 7. Launch PaperPilot
+
+Open a separate terminal, navigate to the project root, and run:
 
 ```bash
 npm run dev
 ```
 
-This starts the Vite renderer, the FastAPI service on `http://localhost:8000`,
-and Electron together. If you start Electron separately, start the AI service
-first with `npm run dev:ai-service`.
+This starts the Vite development server and launches the Electron desktop application using the configured development script.
 
-1. Launch PaperPilot.
-2. Click **Add paper** and select an academic research paper.
-3. PaperPilot extracts the paper's text.
-4. The extracted content is processed into chunks.
-5. The chunks are converted into embeddings for that paper.
-6. The paper is saved in the local library.
-7. Select any saved paper from the sidebar to view it and continue learning.
-8. Relevant chunks from only the selected paper are retrieved when you ask a question.
-9. The AI generates an answer using the retrieved paper content.
+## How to Use
 
-The library supports up to 10 papers. Paper metadata and PDF copies are stored
-locally in Electron's application data directory; papers are not uploaded to a
-remote service. Removing or moving the original PDF after adding it does not
-affect the saved library copy.
+1. Launch PaperPilot and open the research library.
+2. Add a research paper in PDF format.
+3. Wait for text extraction, chunking, embedding generation, and indexing to complete.
+4. Open the indexed paper in the reading workspace.
+5. Ask questions about its methodology, architecture, experiments, findings, or technical concepts.
+6. Review the generated answers and retrieved source excerpts to understand the evidence behind them.
 
----
-
-## Example
-
-### User
-
-> What is the main contribution of this paper?
-
-### PaperPilot
+## Project Structure
 
 ```text
-The main contribution of the paper is ...
-
-Sources:
-Page 3
-Section 2.1
+paperpilot/
+├── electron/
+│   ├── main.js
+│   └── preload.js
+├── src/
+│   ├── components/
+│   ├── services/
+│   ├── App.jsx
+│   ├── main.jsx
+│   └── index.css
+├── ai-service/
+│   ├── main.py
+│   ├── embeddings.py
+│   ├── vector_store.py
+│   ├── llm.py
+│   └── requirements.txt
+├── package.json
+└── vite.config.js
 ```
 
-The goal is to provide answers grounded in the actual research paper rather than relying only on the model's general knowledge.
+*The exact structure may vary as the project evolves.*
 
----
+## Future Improvements
 
-## Project Goals
-
-PaperPilot aims to provide a simple desktop environment where users can:
-
-* Read research papers
-* Search their content semantically
-* Understand difficult concepts
-* Ask questions about methodology and results
-* Generate concise summaries
-* Compare multiple papers
-* Explore relationships between research concepts
-
-The project is designed as a practical demonstration of **Electron.js, AI engineering, RAG, vector databases, and document intelligence**.
-
----
-
-## Status
-
-**Currently in development.**
-
-The initial Electron desktop application and PDF processing pipeline are implemented. RAG-based semantic search and AI question answering are currently being developed.
-
----
-
-## License
-
-This project is intended for educational and research purposes.
+- More advanced citation navigation and PDF highlighting.
+- Improved multi-paper search and comparison.
+- Paper summaries and structured research insights.
+- Enhanced document management and indexing.
+- Production packaging for Windows, macOS, and Linux.

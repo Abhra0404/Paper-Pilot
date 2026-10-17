@@ -7,7 +7,7 @@ import PaperHeader from "./components/PaperHeader";
 import PdfViewer from "./components/PdfViewer";
 import UploadStatus from "./components/UploadStatus";
 import { chunkPages } from "./services/chunker";
-import { indexPaper, queryPaper } from "./services/api";
+import { indexPaper, isPaperIndexed, queryPaper } from "./services/api";
 
 function getSelectedFile(result) {
   if (typeof result === "string") {
@@ -28,6 +28,19 @@ function getSelectedFile(result) {
   throw new Error("The selected PDF did not include a valid file path.");
 }
 
+async function getPaperChunks(paperPath) {
+  const pdfData = await window.electronAPI.extractPDFText(paperPath);
+  if (!pdfData.success) {
+    throw new Error(pdfData.error || "Failed to extract text from the PDF.");
+  }
+
+  const chunks = chunkPages(pdfData.pageTexts || []);
+  if (chunks.length === 0) {
+    throw new Error("This PDF does not contain extractable text.");
+  }
+  return chunks;
+}
+
 function App() {
   const [papers, setPapers] = useState([]);
   const [paper, setPaper] = useState(null);
@@ -37,7 +50,12 @@ function App() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    window.electronAPI?.loadLibrary()
+    const loadLibrary = window.electronAPI?.loadLibrary;
+    const libraryPromise = typeof loadLibrary === "function"
+      ? loadLibrary()
+      : Promise.reject(new Error("PaperPilot could not connect to its desktop runtime. Please restart the application."));
+
+    libraryPromise
       .then((storedPapers) => {
         setPapers(storedPapers);
         setPaper(null);
@@ -53,13 +71,36 @@ function App() {
     setPapers(nextPapers);
   };
 
-  const handleSelectPaper = (selectedPaper) => {
+  const handleSelectPaper = async (selectedPaper) => {
     const openedPaper = { ...selectedPaper, lastOpenedAt: new Date().toISOString() };
     setPaper(openedPaper);
     setView("workspace");
     savePapers(papers.map((item) => item.id === openedPaper.id ? openedPaper : item))
       .catch((saveError) => console.error("Paper timestamp update failed:", saveError));
     setError("");
+
+    if (!selectedPaper.indexed) return;
+
+    try {
+      const indexed = await isPaperIndexed(selectedPaper.id);
+      if (indexed) return;
+
+      setPaper((current) => (
+        current?.id === selectedPaper.id
+          ? { ...current, indexed: false }
+          : current
+      ));
+      const chunks = await getPaperChunks(selectedPaper.path);
+      await indexPaper(selectedPaper.id, chunks);
+      const reindexedPaper = { ...openedPaper, indexed: true };
+      setPaper(reindexedPaper);
+      await savePapers(
+        papers.map((item) => item.id === reindexedPaper.id ? reindexedPaper : item)
+      );
+    } catch (reindexError) {
+      console.error("Paper reindexing failed:", reindexError);
+      setError(reindexError.message || "Unable to restore the paper index.");
+    }
   };
 
   const handleMessagesChange = useCallback((messages) => {

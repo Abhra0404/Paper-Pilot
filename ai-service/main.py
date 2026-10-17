@@ -86,6 +86,13 @@ def index_paper(request: IndexRequest):
     }
 
 
+@app.get("/index-status/{paper_id}")
+def index_status(paper_id: str):
+    if not paper_id or len(paper_id) > 100:
+        raise HTTPException(status_code=400, detail="Invalid paper ID")
+    return {"indexed": collection_exists(paper_id)}
+
+
 @app.post("/query")
 def query_paper(request: QueryRequest):
     question = request.question.strip()

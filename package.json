@@ -41,8 +41,12 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "ai-service/**/*",
       "assets/icons/**/*",
       "package.json"
+    ],
+    "asarUnpack": [
+      "ai-service/**/*"
     ],
     "directories": {
       "output": "release"

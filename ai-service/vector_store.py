@@ -10,6 +10,7 @@ from qdrant_client.models import (
 import os
 import uuid
 import hashlib
+from pathlib import Path
 
 
 def collection_name(paper_id):
@@ -18,14 +19,18 @@ def collection_name(paper_id):
 
 
 def create_client():
-    qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
-    remote_client = QdrantClient(url=qdrant_url)
+    qdrant_url = os.getenv("QDRANT_URL")
+    if qdrant_url:
+        return QdrantClient(url=qdrant_url)
 
-    try:
-        remote_client.get_collections()
-        return remote_client
-    except Exception:
-        return QdrantClient(":memory:")
+    qdrant_path = Path(
+        os.getenv(
+            "PAPERPILOT_QDRANT_PATH",
+            Path.home() / ".paperpilot" / "qdrant",
+        )
+    )
+    qdrant_path.mkdir(parents=True, exist_ok=True)
+    return QdrantClient(path=str(qdrant_path))
 
 
 client = create_client()

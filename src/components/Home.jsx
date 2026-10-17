@@ -40,7 +40,7 @@ export default function Home({ papers, onUpload, onOpen, onRemove, disabled, pro
     <div className="home-page">
       <aside className="home-sidebar">
         <div className="home-brand">
-          <img className="brand-icon" src="/paperpilot-icon.png" alt="" aria-hidden="true" />
+          <img className="brand-icon" src="./paperpilot-icon.png" alt="" aria-hidden="true" />
           <div><strong>PaperPilot</strong><span>Research library</span></div>
         </div>
         <nav className="home-nav-list" aria-label="Primary navigation">
